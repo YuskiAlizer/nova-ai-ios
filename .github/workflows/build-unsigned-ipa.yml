@@ -1,0 +1,51 @@
+name: Build iOS .ipa (Auto-sign)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build unsigned .ipa
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Build archive (unsigned)
+        run: |
+          mkdir -p build
+          cd nova-ios
+          xcodebuild archive \
+            -project NovaAI.xcodeproj \
+            -scheme NovaAI \
+            -archivePath ../build/NovaAI.xcarchive \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            PROVISIONING_PROFILE_SPECIFIER=""
+
+      - name: Create Payload directory
+        run: |
+          mkdir -p build/Payload
+          cp -r build/NovaAI.xcarchive/Products/Applications/NovaAI.app build/Payload/
+          cd build
+          zip -r NovaAI-unsigned.ipa Payload
+          ls -la NovaAI-unsigned.ipa
+
+      - name: Upload unsigned .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovaAI-unsigned.ipa
+          path: build/NovaAI-unsigned.ipa
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: NovaAI.xcarchive
+          path: build/NovaAI.xcarchive
